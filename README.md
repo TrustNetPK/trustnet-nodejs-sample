@@ -1,2 +1,2 @@
-# trustnet-nodejs-sample
-Nodejs sample illustrating self-sovereign identity credential exchange component.
+# NodeJS samples for Indy SDK illustrating self-sovereign identity (SSI)
+

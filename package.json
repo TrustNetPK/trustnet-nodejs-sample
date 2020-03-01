@@ -1,0 +1,37 @@
+{
+  "name": "sample-nodejs",
+  "version": "1.0.0",
+  "description": "NodeJS sample illustrating self-sovereign identity using indy-sdk.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/main.js",
+    "ledger:start": "cd ../../ && docker build -f ci/indy-pool.dockerfile -t indy_pool . && docker run --name indy_pool -itd -p 9701-9708:9701-9708 indy_pool",
+    "ledger:stop": "docker stop indy_pool && docker rm indy_pool"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TrustNetPK/trustnet-nodejs-sample.git"
+  },
+  "contributors": [
+    {
+      "name": "TrustNet PK",
+      "email": "support@trust.net.pk"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TrustNetPK/trustnet-nodejs-sample/issues"
+  },
+  "homepage": "https://github.com/TrustNetPK/trustnet-nodejs-sample#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cryptiles": "^4.1.1",
+    "express": "^4.17.1",
+    "home-dir": "^1.0.0",
+    "indy-sdk": "^1.14.0",
+    "mkdirp": "^0.5.1",
+    "readline-sync": "^1.4.10",
+    "sleep": "^6.1.0"
+  }
+}
