@@ -1,7 +1,8 @@
 const indy = require("indy-sdk");
 const util = require("./util");
 const COLOR = require("./colors");
-var request = require("request");
+const fetch = require("node-fetch");
+const { URLSearchParams } = require("url");
 
 const log = console.log;
 
@@ -32,53 +33,28 @@ function logKO(s) {
 }
 
 // Communication Functions
-function sendToProver(type, message) {
-  const options = {
-    url: PROVER_ADDRESS,
-    json: true,
-    body: {
-      type: type,
-      message: message
-    }
-  };
-  request.post(options, (err, res, body) => {
-    if (err) {
-      return console.log(err);
-    }
-  });
+async function sendToProver(type, message) {
+  console.log(PROVER_ADDRESS);
+  console.log(type);
+  console.log(message);
+  try {
+    const params = new URLSearchParams();
+    params.append("type", type);
+    params.append("message", message);
+    await fetch(PROVER_ADDRESS, {
+      method: "post",
+      body: params
+    })
+      .then(res => res.json())
+      .then(json => console.log(json));
+  } catch (error) {
+    console.log(error);
+  }
 }
 
-function sendToVerfier(type, message) {
-  const options = {
-    url: VERIFIER_ADDRESS,
-    json: true,
-    body: {
-      type: type,
-      message: message
-    }
-  };
-  request.post(options, (err, res, body) => {
-    if (err) {
-      return console.log(err);
-    }
-  });
-}
+async function sendToVerfier(type, message) {}
 
-function sendToIssuer(type, message) {
-  const options = {
-    url: ISSUER_ADDRESS,
-    json: true,
-    body: {
-      type: type,
-      message: message
-    }
-  };
-  request.post(options, (err, res, body) => {
-    if (err) {
-      return console.log(err);
-    }
-  });
-}
+async function sendToIssuer(type, message) {}
 
 // Wallet Functions
 
@@ -208,6 +184,10 @@ async function postCredDefToLedger(poolHandle, wallet, did, credDef) {
   await ensureSignAndSubmitRequest(poolHandle, wallet, did, credDefRequest);
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = {
   log,
   logIssuer,
@@ -226,5 +206,9 @@ module.exports = {
   postSchemaToLedger,
   getSchemaFromLedger,
   getCredDefFromLedger,
-  postCredDefToLedger
+  postCredDefToLedger,
+  sendToProver,
+  sendToVerfier,
+  sendToIssuer,
+  sleep
 };

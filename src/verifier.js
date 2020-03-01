@@ -130,6 +130,6 @@ app.post("/verifier", (req, res) => {
 });
 
 app.listen(3002, () => {
-  console.log("Issuer started on port 3000!");
-  run();
+  console.log("Verifier started on port 3002!");
+  //run();
 });

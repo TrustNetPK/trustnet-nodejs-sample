@@ -9,7 +9,8 @@ var {
   closeAndDeletePoolHandle,
   createAndStoreMyDid,
   getSchemaFromLedger,
-  getCredDefFromLedger
+  getCredDefFromLedger,
+  sleep
 } = require("./wallet-ledger-misc");
 const indy = require("indy-sdk");
 const util = require("./util");
@@ -17,7 +18,6 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
 var readline = require("readline-sync");
-var sleep = require("sleep");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -41,7 +41,8 @@ async function run() {
   logOK("Prover's DID is: " + prover.did);
 
   while (prover.schemaId == undefined) {
-    sleep.sleep(2);
+    await sleep(2000);
+    console.log(prover);
     console.log("Waiting...");
   }
 
@@ -182,14 +183,23 @@ async function run() {
 }
 
 app.post("/prover", (req, res) => {
+  console.log(req.body);
   let type = req.body.type;
   let message = req.body.message;
   console.log(type);
   console.log(message);
-  res.status(200).send("OK");
+  switch (type) {
+    case "schemaId":
+      prover.schemaId = message;
+      break;
+
+    default:
+      break;
+  }
+  res.status(200).send({ status: 200 });
 });
 
 app.listen(3001, () => {
-  console.log("Issuer started on port 3000!");
+  console.log("Prover started on port 3001!");
   run();
 });

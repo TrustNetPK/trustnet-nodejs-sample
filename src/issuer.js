@@ -99,7 +99,8 @@ async function run() {
   logKO("\tSchemaId: " + issuer.schemaId);
   logKO("\tCredential Defination ID: " + issuer.credDefId);
 
-  sendToProver("schemaId", issuer.schemaId);
+  await sendToProver("schemaId", issuer.schemaId);
+  console.log("sent");
 
   logIssuer("Issuer creates credential offer");
   issuer.credOffer = await indy.issuerCreateCredentialOffer(
