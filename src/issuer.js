@@ -12,13 +12,15 @@ var {
   createAndStoreMyDid,
   postSchemaToLedger,
   getSchemaFromLedger,
-  postCredDefToLedger
+  postCredDefToLedger,
+  sleep
 } = require("./wallet-ledger-misc");
 const indy = require("indy-sdk");
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
 var readline = require("readline-sync");
+const util = require("./util");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -96,11 +98,13 @@ async function run() {
     "Issuer shares public data (schema ID, credential definition ID, ...) (via HTTP or other communication protocol) ..."
   );
 
+  //Sending SchemaId to Prover
   logKO("\tSchemaId: " + issuer.schemaId);
-  logKO("\tCredential Defination ID: " + issuer.credDefId);
-
   await sendToProver("schemaId", issuer.schemaId);
-  console.log("sent");
+
+  //Sending CredDefId to Prover
+  logKO("\tCredential Defination ID: " + issuer.credDefId);
+  await sendToProver("credDefId", issuer.credDefId);
 
   logIssuer("Issuer creates credential offer");
   issuer.credOffer = await indy.issuerCreateCredentialOffer(
@@ -111,12 +115,21 @@ async function run() {
   log(
     "Transfer credential offer from 'Issuer' to 'Prover' (via HTTP or other) ..."
   );
-  logKO("\tCredential Offer: " + JSON.stringify(issuer.credOffer));
+  await sendToProver("credOffer", JSON.stringify(issuer.credOffer));
 
-  readline.question(
-    "\nWaiting for Credential Request from prover! Press enter when Credential Request is sent from Prover:"
+  logOK("\nWaiting for Credential Request from prover!");
+  while (issuer.credReq == undefined) {
+    await sleep(2000);
+  }
+
+  const tailsWriterConfig = {
+    base_dir: util.getPathToIndyClientHome() + "/tails",
+    uri_pattern: ""
+  };
+  const tailsWriter = await indy.openBlobStorageWriter(
+    "default",
+    tailsWriterConfig
   );
-
   logIssuer("Issuer creates credential");
   {
     const credValues = {
@@ -134,13 +147,15 @@ async function run() {
       issuer.credReq,
       credValues,
       undefined,
-      undefined
+      tailsWriter
     );
     issuer.cred = cred;
   }
 
-  log("Transfer credential from 'Issuer' to 'Prover' (via HTTP or other) ...");
-  prover.cred = issuer.cred;
+  logIssuer(
+    "Transfer credential from 'Issuer' to 'Prover' (via HTTP or other) ..."
+  );
+  await sendToProver("cred", JSON.stringify(issuer.cred));
   issuer.cred = undefined;
 
   readline.question(
@@ -157,10 +172,14 @@ async function run() {
 app.post("/issuer", (req, res) => {
   let type = req.body.type;
   let message = req.body.message;
-
-  console.log(type);
-  console.log(message);
-  res.status(200).send("OK");
+  switch (type) {
+    case "credReq":
+      issuer.credReq = JSON.parse(message);
+      break;
+    default:
+      break;
+  }
+  res.status(200).send({ status: 200 });
 });
 
 app.listen(3000, () => {

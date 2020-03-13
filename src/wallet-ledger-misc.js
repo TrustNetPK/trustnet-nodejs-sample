@@ -34,9 +34,6 @@ function logKO(s) {
 
 // Communication Functions
 async function sendToProver(type, message) {
-  console.log(PROVER_ADDRESS);
-  console.log(type);
-  console.log(message);
   try {
     const params = new URLSearchParams();
     params.append("type", type);
@@ -46,15 +43,43 @@ async function sendToProver(type, message) {
       body: params
     })
       .then(res => res.json())
-      .then(json => console.log(json));
+      .then(json => json);
   } catch (error) {
     console.log(error);
   }
 }
 
-async function sendToVerfier(type, message) {}
+async function sendToVerfier(type, message) {
+  try {
+    const params = new URLSearchParams();
+    params.append("type", type);
+    params.append("message", message);
+    await fetch(VERIFIER_ADDRESS, {
+      method: "post",
+      body: params
+    })
+      .then(res => res.json())
+      .then(json => json);
+  } catch (error) {
+    console.log(error);
+  }
+}
 
-async function sendToIssuer(type, message) {}
+async function sendToIssuer(type, message) {
+  try {
+    const params = new URLSearchParams();
+    params.append("type", type);
+    params.append("message", message);
+    await fetch(ISSUER_ADDRESS, {
+      method: "post",
+      body: params
+    })
+      .then(res => res.json())
+      .then(json => json);
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 // Wallet Functions
 

@@ -4,13 +4,15 @@ var {
   logVerifier,
   logOK,
   logKO,
+  sendToProver,
   createAndOpenWallet,
   closeAndDeleteWallet,
   createAndOpenPoolHandle,
   closeAndDeletePoolHandle,
   createAndStoreMyDid,
   getSchemaFromLedger,
-  getCredDefFromLedger
+  getCredDefFromLedger,
+  sleep
 } = require("./wallet-ledger-misc");
 const indy = require("indy-sdk");
 const util = require("./util");
@@ -23,14 +25,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 //Main code starts here
 async function verifierVerifyProof(proofReq, proof, schemas, credDefs) {
-  return indy.verifierVerifyProof(
-    proofReq,
-    proof,
-    schemas,
-    credDefs,
-    undefined,
-    undefined
-  );
+  return indy.verifierVerifyProof(proofReq, proof, schemas, credDefs, {}, {});
 }
 
 async function run() {
@@ -46,8 +41,9 @@ async function run() {
   log("Verifier Create DID");
   verifier.did = await createAndStoreMyDid(verifier.wallet);
 
-  logOK("Verifier's DID is: " + prover.did);
+  logKO("\tVerifier's DID is: " + verifier.did);
 
+  verifier.schemaId = readline.question("\nEnter Schema ID: ");
   logVerifier("Verifier gets schema from ledger");
   verifier.schema = await getSchemaFromLedger(
     verifier.poolHandle,
@@ -55,8 +51,9 @@ async function run() {
     verifier.schemaId
   );
 
+  verifier.credDefId = readline.question("\nEnter Credential Defination ID: ");
   readline.question(
-    "\n\nPress Enter to Create Proof Request and Send to Prover: "
+    "\nPress Enter to Create Proof Request and Send to Prover: "
   );
 
   logVerifier("Verifier creates proof request");
@@ -78,14 +75,18 @@ async function run() {
         p_value: 18,
         restrictions: { cred_def_id: verifier.credDefId }
       }
-    },
-    non_revoked: { /*"from": 0,*/ to: util.getCurrentTimeInSeconds() }
+    }
   };
 
   log(
     "Transfer proof request from 'Verifier' to 'Prover' (via HTTP or other) ..."
   );
-  prover.proofReq = verifier.proofReq;
+  await sendToProver("proofReq", JSON.stringify(verifier.proofReq));
+
+  logKO("Waiting for proof from prover...");
+  while (verifier.proof == undefined) {
+    await sleep(2000);
+  }
 
   logVerifier("Verifier gets credential definition from ledger");
   verifier.credDefId = verifier.proof.identifiers[0]["cred_def_id"];
@@ -95,7 +96,7 @@ async function run() {
     verifier.credDefId
   );
 
-  logVerifier("Verifier verify proof (#1)");
+  logVerifier("Verifier verify proof");
   verifier.schemas = {
     [verifier.schemaId]: verifier.schema
   };
@@ -103,16 +104,20 @@ async function run() {
     [verifier.credDefId]: verifier.credDef
   };
   const proofVerificationResult = await verifierVerifyProof(
-    verifier.proofReq,
-    verifier.proof,
-    verifier.schemas,
-    verifier.credDefs
+    JSON.stringify(verifier.proofReq),
+    JSON.stringify(verifier.proof),
+    JSON.stringify(verifier.schemas),
+    JSON.stringify(verifier.credDefs)
   );
   if (proofVerificationResult) {
-    logOK("OK : proof is verified as expected :-)");
+    logOK("\nOK : proof is verified as expected :-)");
   } else {
-    logKO("KO : proof is expected to be verified but it is NOT... :-(");
+    logKO("\nKO : proof is expected to be verified but it is NOT... :-(");
   }
+
+  readline.question(
+    "\n\nVerifier successfully verified proof!, Press enter to terminate this session, delete verifier wallet, pool handle and teriminate program:"
+  );
 
   log("Verifier close and delete wallets");
   await closeAndDeleteWallet(verifier.wallet, "verifier");
@@ -124,12 +129,17 @@ async function run() {
 app.post("/verifier", (req, res) => {
   let type = req.body.type;
   let message = req.body.message;
-  console.log(type);
-  console.log(message);
-  res.status(200).send("OK");
+  switch (type) {
+    case "proof":
+      verifier.proof = JSON.parse(message);
+      break;
+    default:
+      break;
+  }
+  res.status(200).send({ status: 200 });
 });
 
 app.listen(3002, () => {
   console.log("Verifier started on port 3002!");
-  //run();
+  run();
 });

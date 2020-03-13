@@ -3,6 +3,9 @@ var {
   log,
   logProver,
   logOK,
+  logKO,
+  sendToIssuer,
+  sendToVerfier,
   createAndOpenWallet,
   closeAndDeleteWallet,
   createAndOpenPoolHandle,
@@ -38,12 +41,15 @@ async function run() {
     "000000000000000000000000Steward2"
   );
 
-  logOK("Prover's DID is: " + prover.did);
-
+  logKO("\tProver's DID is: " + prover.did);
+  logOK("Waiting for issuer to send schema ID...");
   while (prover.schemaId == undefined) {
     await sleep(2000);
-    console.log(prover);
-    console.log("Waiting...");
+  }
+
+  logOK("Waiting for issuer to send credential definition ID...");
+  while (prover.credDefId == undefined) {
+    await sleep(2000);
   }
 
   logProver("Prover gets schema from ledger");
@@ -52,6 +58,11 @@ async function run() {
     prover.did,
     prover.schemaId
   );
+
+  logOK("Waiting for issuer to send credential offer...");
+  while (prover.credOffer == undefined) {
+    await sleep(2000);
+  }
 
   logProver("Prover gets credential definition from ledger");
   prover.credDefId = prover.credOffer["cred_def_id"];
@@ -87,11 +98,12 @@ async function run() {
   log(
     "Transfer credential request from 'Prover' to 'Issuer' (via HTTP or other) ..."
   );
-  issuer.credReq = prover.credReq;
+  await sendToIssuer("credReq", JSON.stringify(prover.credReq));
 
-  readline.question(
-    "\n\nPress Enter when Credential is sent from Issuer to Prover: "
-  );
+  logOK("\n\nWaiting for Credential from Issuer...");
+  while (prover.cred == undefined) {
+    await sleep(2000);
+  }
 
   logProver("Prover stores credential which was received from issuer");
   await indy.proverStoreCredential(
@@ -103,9 +115,10 @@ async function run() {
     undefined
   );
 
-  readline.question(
-    "\n\nPress Enter when Proof Request is sent from verifier so prover can create a proof: "
-  );
+  logOK("\n\nWaiting for proof request from verifier!");
+  while (prover.proofReq == undefined) {
+    await sleep(2000);
+  }
 
   logProver("Prover gets credentials for proof request");
   {
@@ -138,14 +151,12 @@ async function run() {
     requested_attributes: {
       attr1_referent: {
         cred_id: prover.credInfoForAttribute["referent"],
-        revealed: true,
-        timestamp: prover.timestampOfDelta
+        revealed: true
       }
     },
     requested_predicates: {
       predicate1_referent: {
-        cred_id: prover.credInfoForPredicate["referent"],
-        timestamp: prover.timestampOfDelta
+        cred_id: prover.credInfoForPredicate["referent"]
       }
     }
   };
@@ -156,6 +167,8 @@ async function run() {
     [prover.credDefId]: prover.credDef
   };
 
+  prover.revocStates = {};
+
   prover.proof = await indy.proverCreateProof(
     prover.wallet,
     prover.proofReq,
@@ -163,13 +176,11 @@ async function run() {
     prover.masterSecretId,
     prover.schemas,
     prover.credDefs,
-    undefined
+    prover.revocStates
   );
 
-  log("Transfer proof from 'Prover' to 'Verifier' (via HTTP or other) ...");
-  verifier.proof = prover.proof;
-  verifier.timestampOfProof = verifier.proof.identifiers[0].timestamp;
-  verifier.timestampReceptionOfProof = util.getCurrentTimeInSeconds();
+  logOK("Transfer proof from 'Prover' to 'Verifier' (via HTTP or other) ...");
+  await sendToVerfier("proof", JSON.stringify(prover.proof));
 
   readline.question(
     "\n\nProof successfully transfered from prover to verifer, Press enter to terminate this session, delete prover wallet, pool handle and teriminate program:"
@@ -183,16 +194,23 @@ async function run() {
 }
 
 app.post("/prover", (req, res) => {
-  console.log(req.body);
   let type = req.body.type;
   let message = req.body.message;
-  console.log(type);
-  console.log(message);
   switch (type) {
     case "schemaId":
       prover.schemaId = message;
       break;
-
+    case "credDefId":
+      prover.credDefId = message;
+      break;
+    case "credOffer":
+      prover.credOffer = JSON.parse(message);
+      break;
+    case "cred":
+      prover.cred = JSON.parse(message);
+      break;
+    case "proofReq":
+      prover.proofReq = JSON.parse(message);
     default:
       break;
   }
