@@ -4,6 +4,8 @@ This demo illustrates how identity blockchain agents can be used to issue verifi
 
 Wiki for verifiable credential: https://en.wikipedia.org/wiki/Verifiable_credentials
 
+![Credential Model](doc/cred-model.png)
+
 ## Demo Video
 </hr>
 
