@@ -31,7 +31,7 @@
     "home-dir": "^1.0.0",
     "indy-sdk": "^1.14.0",
     "mkdirp": "^0.5.1",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^3.1.1",
     "readline-sync": "^1.4.10",
     "sleep": "^6.1.0"
   }
